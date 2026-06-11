@@ -4,7 +4,6 @@ let dashboardData = {
   standings: [],
   games: [],
   exactHits: [],
-  participantBets: [],
   lastUpdated: ""
 };
 
@@ -16,21 +15,34 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initEvents() {
-  document.getElementById("refreshBtn").addEventListener("click", loadDashboardData);
-  document.getElementById("standingsBody").addEventListener("click", (event) => {
-    const participantButton = event.target.closest(".participant-link");
+  const refreshBtn = document.getElementById("refreshBtn");
+  const standingsBody = document.getElementById("standingsBody");
 
-    if (!participantButton) return;
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", loadDashboardData);
+  }
 
-    openParticipantModal(participantButton.dataset.participantName);
-  });
+  if (standingsBody) {
+    standingsBody.addEventListener("click", (event) => {
+      const participantButton = event.target.closest(".participant-link");
+
+      if (!participantButton) {
+        return;
+      }
+
+      const participantName = participantButton.dataset.participantName;
+      openParticipantModal(participantName);
+    });
+  }
 
   document.querySelectorAll("[data-modal-close]").forEach((element) => {
     element.addEventListener("click", closeParticipantModal);
   });
 
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closeParticipantModal();
+    if (event.key === "Escape") {
+      closeParticipantModal();
+    }
   });
 
   document.querySelectorAll(".filter-btn").forEach((btn) => {
@@ -47,8 +59,8 @@ function initEvents() {
 function loadDashboardData() {
   setLoadingState();
 
-  if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes("XXXXXXXX") || APPS_SCRIPT_URL.includes("שים_כאן")) {
-    renderEmptyDashboard("חסר קישור ל־Apps Script");
+  if (!APPS_SCRIPT_URL || !APPS_SCRIPT_URL.includes("/exec")) {
+    renderEmptyDashboard("חסר קישור תקין ל־Apps Script");
     return;
   }
 
@@ -60,7 +72,6 @@ function loadDashboardData() {
         standings: data.standings || [],
         games: data.games || [],
         exactHits: data.exactHits || [],
-        participantBets: data.participantBets || data.predictions || data.bets || data.guesses || data["הימורים"] || [],
         lastUpdated: data.lastUpdated || ""
       };
 
@@ -124,7 +135,6 @@ function renderHeader(data) {
 
 function renderStats(data) {
   const standings = data.standings || [];
-  const games = data.games || [];
   const exactHits = data.exactHits || [];
 
   const totalPoints = standings.reduce((sum, row) => {
@@ -135,17 +145,11 @@ function renderStats(data) {
     ? Math.max(...standings.map((row) => Number(getValue(row, ["משחקים שחושבו", "משחקים", "calculatedGames"], 0))))
     : 0;
 
-  const participantsCount = standings.length;
-
-  document.getElementById("participantsCount").textContent = participantsCount;
+  document.getElementById("participantsCount").textContent = standings.length;
   document.getElementById("exactHitsCount").textContent = exactHits.length;
   document.getElementById("calculatedGamesCount").textContent = calculatedGames;
-  document.getElementById("totalPointsCount").textContent = totalPoints;
-
-  if (totalPoints === 0 && calculatedGames === 0) {
-    document.getElementById("totalPointsCount").textContent = "—";
-    document.getElementById("calculatedGamesCount").textContent = "0";
-  }
+  document.getElementById("totalPointsCount").textContent =
+    totalPoints === 0 && calculatedGames === 0 ? "—" : totalPoints;
 }
 
 function renderPodium(standings) {
@@ -197,6 +201,8 @@ function renderStandings(standings) {
     return;
   }
 
+  const hasScore = hasAnyScore(standings);
+
   tbody.innerHTML = standings.map((row, index) => {
     const rank = getValue(row, ["מקום", "rank"], index + 1);
     const name = getValue(row, ["שם", "friend", "name"]);
@@ -207,15 +213,15 @@ function renderStandings(standings) {
 
     return `
       <tr>
-        <td class="rank-cell">${getMedal(rank)} ${escapeHtml(rank)}</td>
+        <td class="rank-cell">${hasScore ? `${getMedal(rank)} ${escapeHtml(rank)}` : "—"}</td>
         <td>
           <button type="button" class="participant-link" data-participant-name="${escapeHtml(name)}">
             ${escapeHtml(name)}
           </button>
         </td>
-        <td class="points">${escapeHtml(points)}</td>
-        <td>${escapeHtml(exact)}</td>
-        <td>${escapeHtml(correct)}</td>
+        <td class="points">${hasScore ? escapeHtml(points) : "—"}</td>
+        <td>${hasScore ? escapeHtml(exact) : "—"}</td>
+        <td>${hasScore ? escapeHtml(correct) : "—"}</td>
         <td>${escapeHtml(games)}</td>
       </tr>
     `;
@@ -226,33 +232,109 @@ function openParticipantModal(participantName) {
   const modal = document.getElementById("participantModal");
   const title = document.getElementById("participantModalTitle");
   const body = document.getElementById("participantBetsBody");
-  const bets = getParticipantBets(participantName);
 
   title.textContent = `ההימורים של ${participantName}`;
 
-  if (bets.length === 0) {
-    body.innerHTML = `
-      <div class="empty-state">
-        לא נמצאו הימורים להצגה עבור ${escapeHtml(participantName)}.
-        ודאו שה־Apps Script מחזיר את ההימורים מה־Google Sheets בשדה participantBets / predictions / bets.
-      </div>
-    `;
-  } else {
-    body.innerHTML = `
-      <div class="participant-bets-grid">
-        ${bets.map(renderParticipantBetCard).join("")}
-      </div>
-    `;
-  }
+  body.innerHTML = `
+    <div class="empty-state">
+      טוען את ההימורים של ${escapeHtml(participantName)} מה־Google Sheets...
+    </div>
+  `;
 
   modal.hidden = false;
   document.body.classList.add("modal-open");
+
+  loadParticipantBetsFromAppsScript(participantName);
+}
+
+function loadParticipantBetsFromAppsScript(participantName) {
+  const body = document.getElementById("participantBetsBody");
+
+  if (!APPS_SCRIPT_URL || !APPS_SCRIPT_URL.includes("/exec")) {
+    body.innerHTML = `
+      <div class="empty-state">
+        חסר קישור תקין ל־Apps Script
+      </div>
+    `;
+    return;
+  }
+
+  const callbackName = "handleParticipantBets_" + Date.now();
+
+  window[callbackName] = function (data) {
+    try {
+      if (!data || data.ok === false) {
+        body.innerHTML = `
+          <div class="empty-state">
+            ${escapeHtml(data?.message || "לא נמצאו הימורים עבור המשתתף")}
+          </div>
+        `;
+        return;
+      }
+
+      const bets = data.bets || [];
+
+      if (bets.length === 0) {
+        body.innerHTML = `
+          <div class="empty-state">
+            לא נמצאו הימורים להצגה עבור ${escapeHtml(participantName)}
+          </div>
+        `;
+        return;
+      }
+
+      body.innerHTML = `
+        <div class="participant-bets-grid">
+          ${bets.map(renderParticipantBetCard).join("")}
+        </div>
+      `;
+    } catch (error) {
+      console.error(error);
+
+      body.innerHTML = `
+        <div class="empty-state">
+          שגיאה בעיבוד ההימורים של המשתתף
+        </div>
+      `;
+    } finally {
+      delete window[callbackName];
+
+      const oldScript = document.getElementById(callbackName);
+      if (oldScript) {
+        oldScript.remove();
+      }
+    }
+  };
+
+  const script = document.createElement("script");
+  script.id = callbackName;
+  script.src =
+    `${APPS_SCRIPT_URL}?action=playerBets&player=${encodeURIComponent(participantName)}&callback=${callbackName}`;
+
+  script.onerror = function () {
+    delete window[callbackName];
+
+    const oldScript = document.getElementById(callbackName);
+    if (oldScript) {
+      oldScript.remove();
+    }
+
+    body.innerHTML = `
+      <div class="empty-state">
+        שגיאה בטעינת ההימורים מה־Apps Script
+      </div>
+    `;
+  };
+
+  document.body.appendChild(script);
 }
 
 function closeParticipantModal() {
   const modal = document.getElementById("participantModal");
 
-  if (!modal || modal.hidden) return;
+  if (!modal || modal.hidden) {
+    return;
+  }
 
   modal.hidden = true;
   document.body.classList.remove("modal-open");
@@ -260,117 +342,72 @@ function closeParticipantModal() {
 
 function renderParticipantBetCard(bet) {
   const match = getValue(bet, ["משחק", "משחק בטופס", "match", "title"], "");
-  const prediction = getValue(bet, ["הימור", "ניחוש", "prediction", "bet", "guess"], "");
-  const actualScore = getValue(bet, ["תוצאה בפועל", "תוצאה", "actualScore", "score"], "");
-  const points = getValue(bet, ["נקודות", "points"], "");
+  const pick = getValue(bet, ["pick", "הימור", "ניחוש", "prediction", "bet", "guess"], "");
+  const predictedScore = getValue(bet, ["predictedScore", "תוצאה שהוזנה", "תוצאה מדויקת"], "");
+  const normalizedScore = getValue(bet, ["normalizedScore", "תוצאה מנורמלת"], "");
+  const actualScore = getValue(bet, ["actualScore", "תוצאה בפועל", "תוצאה", "score"], "");
+  const points = getValue(bet, ["points", "נקודות"], "");
+  const exact = getValue(bet, ["exact", "פגע בול"], "");
+  const statusText = getValue(bet, ["statusText"], "");
+  const date = getValue(bet, ["date", "תאריך"], "");
 
   return `
     <article class="bet-card">
       <h3>${escapeHtml(match || "משחק ללא שם")}</h3>
+
+      ${date ? `
+        <div class="bet-row">
+          <span>תאריך</span>
+          <strong>${escapeHtml(date)}</strong>
+        </div>
+      ` : ""}
+
       <div class="bet-row">
-        <span>הימור</span>
-        <strong>${escapeHtml(prediction || "—")}</strong>
+        <span>סימון</span>
+        <strong>${escapeHtml(pick || "—")}</strong>
       </div>
+
+      <div class="bet-row">
+        <span>תוצאה שהימר</span>
+        <strong>${escapeHtml(predictedScore || "—")}</strong>
+      </div>
+
+      ${normalizedScore ? `
+        <div class="bet-row">
+          <span>תוצאה מנורמלת</span>
+          <strong>${escapeHtml(normalizedScore)}</strong>
+        </div>
+      ` : ""}
+
       ${actualScore ? `
         <div class="bet-row">
           <span>תוצאה בפועל</span>
           <strong>${escapeHtml(actualScore)}</strong>
         </div>
       ` : ""}
+
+      ${statusText ? `
+        <div class="bet-row">
+          <span>סטטוס</span>
+          <strong>${escapeHtml(statusText)}</strong>
+        </div>
+      ` : ""}
+
       ${points !== "" ? `
         <div class="bet-row">
           <span>נקודות</span>
           <strong>${escapeHtml(points)}</strong>
         </div>
       ` : ""}
+
+      ${exact ? `
+        <div class="bet-row">
+          <span>פגע בול</span>
+          <strong>${escapeHtml(exact)}</strong>
+        </div>
+      ` : ""}
     </article>
   `;
-}
-
-function getParticipantBets(participantName) {
-  const explicitBets = collectBetsFromSource(dashboardData.participantBets, participantName);
-
-  if (explicitBets.length > 0) {
-    return explicitBets;
-  }
-
-  const participantRow = dashboardData.standings.find((row) => {
-    return normalizeText(getParticipantName(row)) === normalizeText(participantName);
-  });
-
-  return participantRow ? extractBetsFromWideRow(participantRow) : [];
-}
-
-function collectBetsFromSource(source, participantName) {
-  if (!source) return [];
-
-  if (Array.isArray(source)) {
-    return source.flatMap((row) => {
-      if (normalizeText(getParticipantName(row)) !== normalizeText(participantName)) return [];
-
-      if (hasExplicitBetFields(row)) {
-        return [row];
-      }
-
-      return extractBetsFromWideRow(row);
-    });
-  }
-
-  if (typeof source === "object") {
-    const directValue = source[participantName] || source[normalizeText(participantName)];
-
-    if (Array.isArray(directValue)) {
-      return directValue;
-    }
-
-    if (directValue && typeof directValue === "object") {
-      return hasExplicitBetFields(directValue) ? [directValue] : extractBetsFromWideRow(directValue);
-    }
-  }
-
-  return [];
-}
-
-function extractBetsFromWideRow(row) {
-  const ignoredKeys = new Set([
-    "שם",
-    "friend",
-    "name",
-    "participant",
-    "משתתף",
-    "מקום",
-    "rank",
-    "נקודות",
-    "points",
-    "פגיעות מדויקות",
-    "exact_hits",
-    "exactHits",
-    "כיוון נכון",
-    "correctResults",
-    "משחקים שחושבו",
-    "משחקים",
-    "calculatedGames",
-    "חותמת זמן",
-    "timestamp"
-  ]);
-
-  return Object.entries(row)
-    .filter(([key, value]) => !ignoredKeys.has(key) && value !== undefined && value !== null && value !== "")
-    .map(([key, value]) => ({
-      match: key,
-      prediction: value
-    }));
-}
-
-function hasExplicitBetFields(row) {
-  const match = getValue(row, ["משחק", "משחק בטופס", "match", "title"], "");
-  const prediction = getValue(row, ["הימור", "ניחוש", "prediction", "bet", "guess"], "");
-
-  return Boolean(match || prediction);
-}
-
-function getParticipantName(row) {
-  return getValue(row, ["שם", "friend", "name", "participant", "משתתף"], "");
 }
 
 function renderExactHits(exactHits) {
@@ -419,7 +456,10 @@ function renderGames(games) {
   const filteredGames = games.filter((game) => {
     const status = getGameStatusGroup(game);
 
-    if (currentGamesFilter === "all") return true;
+    if (currentGamesFilter === "all") {
+      return true;
+    }
+
     return status === currentGamesFilter;
   });
 
@@ -486,10 +526,21 @@ function hasAnyScore(standings) {
 function getGameStatusGroup(game) {
   const status = String(getValue(game, ["סטטוס", "status"], "")).toUpperCase();
 
-  if (["FT", "AET", "PEN"].includes(status)) return "finished";
-  if (["1H", "2H", "HT", "ET", "BT", "P", "LIVE"].includes(status)) return "live";
-  if (["NS", "TBD"].includes(status)) return "upcoming";
-  if (status === "לא נמצא") return "missing";
+  if (["FT", "AET", "PEN"].includes(status)) {
+    return "finished";
+  }
+
+  if (["1H", "2H", "HT", "ET", "BT", "P", "LIVE"].includes(status)) {
+    return "live";
+  }
+
+  if (["NS", "TBD"].includes(status)) {
+    return "upcoming";
+  }
+
+  if (status === "לא נמצא") {
+    return "missing";
+  }
 
   return "upcoming";
 }
@@ -515,18 +566,35 @@ function getStatusText(status) {
 }
 
 function getStatusEmoji(statusGroup) {
-  if (statusGroup === "finished") return "🟢";
-  if (statusGroup === "live") return "🟡";
-  if (statusGroup === "missing") return "🔴";
+  if (statusGroup === "finished") {
+    return "🟢";
+  }
+
+  if (statusGroup === "live") {
+    return "🟡";
+  }
+
+  if (statusGroup === "missing") {
+    return "🔴";
+  }
+
   return "⚪";
 }
 
 function getMedal(rank) {
   const numberRank = Number(rank);
 
-  if (numberRank === 1) return "🥇";
-  if (numberRank === 2) return "🥈";
-  if (numberRank === 3) return "🥉";
+  if (numberRank === 1) {
+    return "🥇";
+  }
+
+  if (numberRank === 2) {
+    return "🥈";
+  }
+
+  if (numberRank === 3) {
+    return "🥉";
+  }
 
   return "";
 }
@@ -541,13 +609,10 @@ function getValue(obj, keys, fallback = "") {
   return fallback;
 }
 
-function normalizeText(value) {
-  return String(value || "").trim().toLowerCase();
-}
-
 function setLoadingState() {
   document.getElementById("lastUpdated").textContent = "טוען...";
   document.getElementById("leaderName").textContent = "טוען...";
+
   document.getElementById("standingsBody").innerHTML = `
     <tr>
       <td colspan="6">טוען נתונים מה־Google Sheets...</td>
@@ -557,6 +622,11 @@ function setLoadingState() {
 
 function showToast(message) {
   const toast = document.getElementById("toast");
+
+  if (!toast) {
+    return;
+  }
+
   toast.textContent = message;
   toast.classList.add("show");
 
