@@ -1,198 +1,201 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>הימורי מונדיאל 2026 - צוות מונק</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>הימורי מונדיאל 2026 - צוות מונק</title>
 
-  <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="style.css" />
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
 </head>
 
 <body>
-  <div class="app-bg"></div>
+    <div class="app-bg"></div>
 
-  <header class="hero">
-    <nav class="navbar">
-      <div class="brand">
-        <div class="brand-icon">🏆</div>
-        <div>
-          <h1>World Cup Bets</h1>
-          <p>טבלת ההימורים של החברים</p>
-        </div>
-      </div>
+    <header class="hero">
+        <nav class="navbar">
+            <div class="brand">
+                <div class="brand-icon">🏆</div>
+                <div>
+                    <h1>World Cup Bets</h1>
+                    <p>טבלת ההימורים של החברים</p>
+                </div>
+            </div>
 
-      <button id="refreshBtn" class="refresh-btn">
-        רענון נתונים
-        <span>↻</span>
-      </button>
-    </nav>
+            <button id="refreshBtn" class="refresh-btn">
+                רענון נתונים
+                <span>↻</span>
+            </button>
+        </nav>
 
-    <section class="hero-content">
-      <div class="hero-text">
-        <span class="pill">מונדיאל 2026</span>
+        <section class="hero-content">
+            <div class="hero-text">
+                <span class="pill">מונדיאל 2026</span>
 
-        <h2>מי מוביל בטבלת ההימורים?</h2>
+                <h2>מי מוביל בטבלת ההימורים?</h2>
 
-        <p>
-          הדשבורד מסתנכרן מול Google Sheets ומציג דירוג, פגיעות מדויקות וסטטוס משחקים.
-        </p>
+                <p>
+                    הדשבורד מסתנכרן מול Google Sheets ומציג דירוג, פגיעות מדויקות וסטטוס משחקים.
+                </p>
 
-        <div class="last-update">
-          <span class="dot"></span>
-          עודכן לאחרונה:
-          <strong id="lastUpdated">טוען...</strong>
-        </div>
-      </div>
+                <div class="last-update">
+                    <span class="dot"></span>
+                    עודכן לאחרונה:
+                    <strong id="lastUpdated">טוען...</strong>
+                </div>
+            </div>
 
-      <div class="leader-card">
-        <span class="leader-label">המוביל כרגע</span>
-        <h3 id="leaderName">טוען...</h3>
-        <p><span id="leaderPoints">0</span> נקודות</p>
-      </div>
-    </section>
-  </header>
+            <div class="leader-card">
+                <span class="leader-label">המוביל כרגע</span>
+                <h3 id="leaderName">טוען...</h3>
+                <p><span id="leaderPoints">0</span> נקודות</p>
+            </div>
+        </section>
+    </header>
 
-  <main class="container">
+    <main class="container">
 
-    <section class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-icon">👥</div>
-        <div>
-          <span>משתתפים</span>
-          <strong id="participantsCount">0</strong>
-        </div>
-      </div>
+        <section class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">👥</div>
+                <div>
+                    <span>משתתפים</span>
+                    <strong id="participantsCount">0</strong>
+                </div>
+            </div>
 
-      <div class="stat-card">
-        <div class="stat-icon">🎯</div>
-        <div>
-          <span>פגיעות מדויקות</span>
-          <strong id="exactHitsCount">0</strong>
-        </div>
-      </div>
+            <div class="stat-card">
+                <div class="stat-icon">🎯</div>
+                <div>
+                    <span>פגיעות מדויקות</span>
+                    <strong id="exactHitsCount">0</strong>
+                </div>
+            </div>
 
-      <div class="stat-card">
-        <div class="stat-icon">⚽</div>
-        <div>
-          <span>משחקים שחושבו</span>
-          <strong id="calculatedGamesCount">0</strong>
-        </div>
-      </div>
+            <div class="stat-card">
+                <div class="stat-icon">⚽</div>
+                <div>
+                    <span>משחקים שחושבו</span>
+                    <strong id="calculatedGamesCount">0</strong>
+                </div>
+            </div>
 
-      <div class="stat-card">
-        <div class="stat-icon">🔥</div>
-        <div>
-          <span>סה״כ נקודות</span>
-          <strong id="totalPointsCount">—</strong>
-        </div>
-      </div>
-    </section>
+            <div class="stat-card">
+                <div class="stat-icon">🔥</div>
+                <div>
+                    <span>סה״כ נקודות</span>
+                    <strong id="totalPointsCount">—</strong>
+                </div>
+            </div>
+        </section>
 
-    <section class="section">
-      <div class="section-header">
-        <div>
-          <span class="section-kicker">Top 3</span>
-          <h2>טופ 3</h2>
-        </div>
-      </div>
+        <section class="section">
+            <div class="section-header">
+                <div>
+                    <span class="section-kicker">Top 3</span>
+                    <h2>טופ 3</h2>
+                </div>
+            </div>
 
-      <div id="podium" class="podium">
-        <div class="empty-state">
-          טוען נתונים מה־Google Sheets...
-        </div>
-      </div>
-    </section>
+            <div id="podium" class="podium">
+                <div class="empty-state">
+                    טוען נתונים מה־Google Sheets...
+                </div>
+            </div>
+        </section>
 
-    <section class="section">
-      <div class="section-header">
-        <div>
-          <span class="section-kicker">Standings</span>
-          <h2>טבלת מקומות</h2>
-        </div>
-      </div>
+        <section class="section">
+            <div class="section-header">
+                <div>
+                    <span class="section-kicker">Standings</span>
+                    <h2>טבלת מקומות</h2>
+                </div>
+            </div>
 
-      <div class="table-card">
-        <table>
-          <thead>
-            <tr>
-              <th>מקום</th>
-              <th>שם</th>
-              <th>נקודות</th>
-              <th>בול</th>
-              <th>כיוון נכון</th>
-              <th>משחקים</th>
-            </tr>
-          </thead>
+            <div class="table-card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>מקום</th>
+                            <th>שם</th>
+                            <th>נקודות</th>
+                            <th>בול</th>
+                            <th>כיוון נכון</th>
+                            <th>משחקים</th>
+                        </tr>
+                    </thead>
 
-          <tbody id="standingsBody">
-            <tr>
-              <td colspan="6">טוען נתונים מה־Google Sheets...</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
+                    <tbody id="standingsBody">
+                        <tr>
+                            <td colspan="6">טוען נתונים מה־Google Sheets...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
 
-    <section class="section two-columns">
-      <div>
-        <div class="section-header">
-          <div>
-            <span class="section-kicker">Exact Hits</span>
-            <h2>פגיעות מדויקות</h2>
-          </div>
-        </div>
+        <section class="section two-columns">
+            <div>
+                <div class="section-header">
+                    <div>
+                        <span class="section-kicker">Exact Hits</span>
+                        <h2>פגיעות מדויקות</h2>
+                    </div>
+                </div>
 
-        <div id="exactHitsList" class="cards-list">
-          <div class="empty-state">
-            טוען נתונים...
-          </div>
-        </div>
-      </div>
+                <div id="exactHitsList" class="cards-list">
+                    <div class="empty-state">
+                        טוען נתונים...
+                    </div>
+                </div>
+            </div>
 
-      <div>
-        <div class="section-header">
-          <div>
-            <span class="section-kicker">Matches</span>
-            <h2>סטטוס משחקים</h2>
-          </div>
-        </div>
+            <div>
+                <div class="section-header">
+                    <div>
+                        <span class="section-kicker">Matches</span>
+                        <h2>סטטוס משחקים</h2>
+                    </div>
+                </div>
 
-        <div class="filters">
-          <button class="filter-btn active" data-filter="all">הכל</button>
-          <button class="filter-btn" data-filter="finished">הסתיימו</button>
-          <button class="filter-btn" data-filter="live">חי</button>
-          <button class="filter-btn" data-filter="upcoming">טרם התחיל</button>
-        </div>
+                <div class="filters">
+                    <button class="filter-btn active" data-filter="all">הכל</button>
+                    <button class="filter-btn" data-filter="finished">הסתיימו</button>
+                    <button class="filter-btn" data-filter="live">חי</button>
+                    <button class="filter-btn" data-filter="upcoming">טרם התחיל</button>
+                </div>
 
-        <div id="gamesList" class="cards-list">
-          <div class="empty-state">
-            טוען משחקים...
-          </div>
-        </div>
-      </div>
-    </section>
+                <div id="gamesList" class="cards-list">
+                    <div class="empty-state">
+                        טוען משחקים...
+                    </div>
+                </div>
+            </div>
+        </section>
 
-  </main>
+    </main>
 
-  <div id="toast" class="toast">הנתונים עודכנו</div>
+    <div id="toast" class="toast">הנתונים עודכנו</div>
 
-  <div id="participantModal" class="modal" hidden>
-    <div class="modal-backdrop" data-modal-close></div>
+    <div id="participantModal" class="modal" hidden>
+        <div class="modal-backdrop" data-modal-close></div>
 
-    <section class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="participantModalTitle">
-      <button type="button" class="modal-close" data-modal-close aria-label="סגירת חלון">×</button>
+        <section class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="participantModalTitle">
+            <button type="button" class="modal-close" data-modal-close aria-label="סגירת חלון">×</button>
 
-      <span class="section-kicker">Participant Bets</span>
-      <h2 id="participantModalTitle">הימורי משתתף</h2>
+            <span class="section-kicker">Participant Bets</span>
+            <h2 id="participantModalTitle">הימורי משתתף</h2>
 
-      <div id="participantBetsBody" class="participant-bets-body"></div>
-    </section>
-  </div>
+            <div id="participantBetsBody" class="participant-bets-body"></div>
+        </section>
+    </div>
 
-  <script src="script.js?v=31"></script>
+    <script src="script.js?v=41"></script>
 </body>
+
 </html>

@@ -30,7 +30,7 @@ function initEvents() {
         return;
       }
 
-      const participantName = participantButton.dataset.participantName;
+      const participantName = decodeURIComponent(participantButton.dataset.participantName);
       openParticipantModal(participantName);
     });
   }
@@ -56,31 +56,17 @@ function initEvents() {
   });
 }
 
-function loadDashboardData() {
-  setLoadingState();
+function jsonpRequest(url) {
+  return new Promise((resolve, reject) => {
+    const callbackName =
+      "jsonpCallback_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
 
-  if (!APPS_SCRIPT_URL || !APPS_SCRIPT_URL.includes("/exec")) {
-    renderEmptyDashboard("חסר קישור תקין ל־Apps Script");
-    return;
-  }
+    window[callbackName] = function (data) {
+      resolve(data);
+      cleanup();
+    };
 
-  const callbackName = "handleDashboardData_" + Date.now();
-
-  window[callbackName] = function (data) {
-    try {
-      dashboardData = {
-        standings: data.standings || [],
-        games: data.games || [],
-        exactHits: data.exactHits || [],
-        lastUpdated: data.lastUpdated || ""
-      };
-
-      renderDashboard(dashboardData);
-      showToast("הנתונים נטענו מה־Google Sheets");
-    } catch (error) {
-      console.error(error);
-      renderEmptyDashboard("שגיאה בעיבוד הנתונים");
-    } finally {
+    function cleanup() {
       delete window[callbackName];
 
       const oldScript = document.getElementById(callbackName);
@@ -88,24 +74,46 @@ function loadDashboardData() {
         oldScript.remove();
       }
     }
-  };
 
-  const script = document.createElement("script");
-  script.id = callbackName;
-  script.src = `${APPS_SCRIPT_URL}?callback=${callbackName}`;
+    const script = document.createElement("script");
+    script.id = callbackName;
 
-  script.onerror = function () {
-    delete window[callbackName];
+    const separator = url.includes("?") ? "&" : "?";
+    script.src = `${url}${separator}callback=${callbackName}`;
 
-    const oldScript = document.getElementById(callbackName);
-    if (oldScript) {
-      oldScript.remove();
+    script.onerror = function () {
+      cleanup();
+      reject(new Error("JSONP request failed"));
+    };
+
+    document.body.appendChild(script);
+  });
+}
+
+async function loadDashboardData() {
+  try {
+    setLoadingState();
+
+    if (!APPS_SCRIPT_URL || !APPS_SCRIPT_URL.includes("/exec")) {
+      renderEmptyDashboard("חסר קישור תקין ל־Apps Script");
+      return;
     }
 
-    renderEmptyDashboard("שגיאה בטעינת הנתונים מה־Apps Script");
-  };
+    const data = await jsonpRequest(APPS_SCRIPT_URL);
 
-  document.body.appendChild(script);
+    dashboardData = {
+      standings: data.standings || [],
+      games: data.games || [],
+      exactHits: data.exactHits || [],
+      lastUpdated: data.lastUpdated || ""
+    };
+
+    renderDashboard(dashboardData);
+    showToast("הנתונים נטענו מה־Google Sheets");
+  } catch (error) {
+    console.error(error);
+    renderEmptyDashboard("שגיאה בטעינת הנתונים מה־Apps Script");
+  }
 }
 
 function renderDashboard(data) {
@@ -122,7 +130,8 @@ function renderHeader(data) {
   const hasRealScore = hasAnyScore(standings);
   const leader = hasRealScore ? standings[0] : null;
 
-  document.getElementById("lastUpdated").textContent = data.lastUpdated || "עדיין לא בוצע סנכרון";
+  document.getElementById("lastUpdated").textContent =
+    data.lastUpdated || "עדיין לא בוצע סנכרון";
 
   document.getElementById("leaderName").textContent = leader
     ? getValue(leader, ["שם", "friend", "name"])
@@ -142,12 +151,17 @@ function renderStats(data) {
   }, 0);
 
   const calculatedGames = standings.length
-    ? Math.max(...standings.map((row) => Number(getValue(row, ["משחקים שחושבו", "משחקים", "calculatedGames"], 0))))
+    ? Math.max(
+        ...standings.map((row) =>
+          Number(getValue(row, ["משחקים שחושבו", "משחקים", "calculatedGames"], 0))
+        )
+      )
     : 0;
 
   document.getElementById("participantsCount").textContent = standings.length;
   document.getElementById("exactHitsCount").textContent = exactHits.length;
   document.getElementById("calculatedGamesCount").textContent = calculatedGames;
+
   document.getElementById("totalPointsCount").textContent =
     totalPoints === 0 && calculatedGames === 0 ? "—" : totalPoints;
 }
@@ -213,12 +227,20 @@ function renderStandings(standings) {
 
     return `
       <tr>
-        <td class="rank-cell">${hasScore ? `${getMedal(rank)} ${escapeHtml(rank)}` : "—"}</td>
+        <td class="rank-cell">
+          ${hasScore ? `${getMedal(rank)} ${escapeHtml(rank)}` : "—"}
+        </td>
+
         <td>
-          <button type="button" class="participant-link" data-participant-name="${escapeHtml(name)}">
+          <button
+            type="button"
+            class="participant-link"
+            data-participant-name="${encodeURIComponent(name)}"
+          >
             ${escapeHtml(name)}
           </button>
         </td>
+
         <td class="points">${hasScore ? escapeHtml(points) : "—"}</td>
         <td>${hasScore ? escapeHtml(exact) : "—"}</td>
         <td>${hasScore ? escapeHtml(correct) : "—"}</td>
@@ -228,7 +250,7 @@ function renderStandings(standings) {
   }).join("");
 }
 
-function openParticipantModal(participantName) {
+async function openParticipantModal(participantName) {
   const modal = document.getElementById("participantModal");
   const title = document.getElementById("participantModalTitle");
   const body = document.getElementById("participantBetsBody");
@@ -244,89 +266,46 @@ function openParticipantModal(participantName) {
   modal.hidden = false;
   document.body.classList.add("modal-open");
 
-  loadParticipantBetsFromAppsScript(participantName);
-}
+  try {
+    const url =
+      `${APPS_SCRIPT_URL}?action=playerBets&player=${encodeURIComponent(participantName)}`;
 
-function loadParticipantBetsFromAppsScript(participantName) {
-  const body = document.getElementById("participantBetsBody");
+    const data = await jsonpRequest(url);
 
-  if (!APPS_SCRIPT_URL || !APPS_SCRIPT_URL.includes("/exec")) {
-    body.innerHTML = `
-      <div class="empty-state">
-        חסר קישור תקין ל־Apps Script
-      </div>
-    `;
-    return;
-  }
-
-  const callbackName = "handleParticipantBets_" + Date.now();
-
-  window[callbackName] = function (data) {
-    try {
-      if (!data || data.ok === false) {
-        body.innerHTML = `
-          <div class="empty-state">
-            ${escapeHtml(data?.message || "לא נמצאו הימורים עבור המשתתף")}
-          </div>
-        `;
-        return;
-      }
-
-      const bets = data.bets || [];
-
-      if (bets.length === 0) {
-        body.innerHTML = `
-          <div class="empty-state">
-            לא נמצאו הימורים להצגה עבור ${escapeHtml(participantName)}
-          </div>
-        `;
-        return;
-      }
-
-      body.innerHTML = `
-        <div class="participant-bets-grid">
-          ${bets.map(renderParticipantBetCard).join("")}
-        </div>
-      `;
-    } catch (error) {
-      console.error(error);
-
+    if (!data || data.ok === false) {
       body.innerHTML = `
         <div class="empty-state">
-          שגיאה בעיבוד ההימורים של המשתתף
+          ${escapeHtml(data?.message || "לא נמצאו הימורים עבור המשתתף")}
         </div>
       `;
-    } finally {
-      delete window[callbackName];
-
-      const oldScript = document.getElementById(callbackName);
-      if (oldScript) {
-        oldScript.remove();
-      }
+      return;
     }
-  };
 
-  const script = document.createElement("script");
-  script.id = callbackName;
-  script.src =
-    `${APPS_SCRIPT_URL}?action=playerBets&player=${encodeURIComponent(participantName)}&callback=${callbackName}`;
+    const bets = data.bets || [];
 
-  script.onerror = function () {
-    delete window[callbackName];
-
-    const oldScript = document.getElementById(callbackName);
-    if (oldScript) {
-      oldScript.remove();
+    if (bets.length === 0) {
+      body.innerHTML = `
+        <div class="empty-state">
+          לא נמצאו הימורים להצגה עבור ${escapeHtml(participantName)}
+        </div>
+      `;
+      return;
     }
+
+    body.innerHTML = `
+      <div class="participant-bets-grid">
+        ${bets.map(renderParticipantBetCard).join("")}
+      </div>
+    `;
+  } catch (error) {
+    console.error(error);
 
     body.innerHTML = `
       <div class="empty-state">
         שגיאה בטעינת ההימורים מה־Apps Script
       </div>
     `;
-  };
-
-  document.body.appendChild(script);
+  }
 }
 
 function closeParticipantModal() {
@@ -341,15 +320,17 @@ function closeParticipantModal() {
 }
 
 function renderParticipantBetCard(bet) {
-  const match = getValue(bet, ["משחק", "משחק בטופס", "match", "title"], "");
+  const match = getValue(bet, ["match", "משחק", "משחק בטופס", "title"], "");
   const pick = getValue(bet, ["pick", "הימור", "ניחוש", "prediction", "bet", "guess"], "");
-  const predictedScore = getValue(bet, ["predictedScore", "תוצאה שהוזנה", "תוצאה מדויקת"], "");
+  const predictedScore = getValue(bet, ["predictedScore", "תוצאה שהימר", "תוצאה מדויקת"], "");
   const normalizedScore = getValue(bet, ["normalizedScore", "תוצאה מנורמלת"], "");
   const actualScore = getValue(bet, ["actualScore", "תוצאה בפועל", "תוצאה", "score"], "");
   const points = getValue(bet, ["points", "נקודות"], "");
   const exact = getValue(bet, ["exact", "פגע בול"], "");
-  const statusText = getValue(bet, ["statusText"], "");
+  const statusText = getValue(bet, ["statusText", "סטטוס טקסט"], "");
+  const status = getValue(bet, ["status", "סטטוס"], "");
   const date = getValue(bet, ["date", "תאריך"], "");
+  const foundInApi = getValue(bet, ["foundInApi", "נמצא ב-API"], "");
 
   return `
     <article class="bet-card">
@@ -363,7 +344,7 @@ function renderParticipantBetCard(bet) {
       ` : ""}
 
       <div class="bet-row">
-        <span>סימון</span>
+        <span>סימון 1/X/2</span>
         <strong>${escapeHtml(pick || "—")}</strong>
       </div>
 
@@ -379,31 +360,32 @@ function renderParticipantBetCard(bet) {
         </div>
       ` : ""}
 
-      ${actualScore ? `
-        <div class="bet-row">
-          <span>תוצאה בפועל</span>
-          <strong>${escapeHtml(actualScore)}</strong>
-        </div>
-      ` : ""}
+      <div class="bet-row">
+        <span>תוצאה בפועל</span>
+        <strong>${escapeHtml(actualScore || "—")}</strong>
+      </div>
 
-      ${statusText ? `
-        <div class="bet-row">
-          <span>סטטוס</span>
-          <strong>${escapeHtml(statusText)}</strong>
-        </div>
-      ` : ""}
+      <div class="bet-row">
+        <span>סטטוס</span>
+        <strong>${escapeHtml(statusText || getStatusText(status) || "—")}</strong>
+      </div>
 
-      ${points !== "" ? `
-        <div class="bet-row">
-          <span>נקודות</span>
-          <strong>${escapeHtml(points)}</strong>
-        </div>
-      ` : ""}
+      <div class="bet-row">
+        <span>נקודות</span>
+        <strong>${points !== "" ? escapeHtml(points) : "—"}</strong>
+      </div>
 
       ${exact ? `
         <div class="bet-row">
           <span>פגע בול</span>
           <strong>${escapeHtml(exact)}</strong>
+        </div>
+      ` : ""}
+
+      ${foundInApi ? `
+        <div class="bet-row">
+          <span>נמצא ב־API</span>
+          <strong>${escapeHtml(foundInApi)}</strong>
         </div>
       ` : ""}
     </article>
@@ -500,7 +482,8 @@ function renderEmptyDashboard(message) {
   document.getElementById("calculatedGamesCount").textContent = "0";
   document.getElementById("totalPointsCount").textContent = "—";
 
-  document.getElementById("podium").innerHTML = `<div class="empty-state">${escapeHtml(message)}</div>`;
+  document.getElementById("podium").innerHTML =
+    `<div class="empty-state">${escapeHtml(message)}</div>`;
 
   document.getElementById("standingsBody").innerHTML = `
     <tr>
@@ -508,8 +491,11 @@ function renderEmptyDashboard(message) {
     </tr>
   `;
 
-  document.getElementById("exactHitsList").innerHTML = `<div class="empty-state">אין נתונים להצגה</div>`;
-  document.getElementById("gamesList").innerHTML = `<div class="empty-state">אין נתונים להצגה</div>`;
+  document.getElementById("exactHitsList").innerHTML =
+    `<div class="empty-state">אין נתונים להצגה</div>`;
+
+  document.getElementById("gamesList").innerHTML =
+    `<div class="empty-state">אין נתונים להצגה</div>`;
 }
 
 function hasAnyScore(standings) {
