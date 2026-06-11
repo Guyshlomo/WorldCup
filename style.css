@@ -9,6 +9,10 @@ body {
   color: #101828;
 }
 
+body.modal-open {
+  overflow: hidden;
+}
+
 .app-bg {
   position: fixed;
   inset: 0;
@@ -344,6 +348,22 @@ tbody tr:hover {
   color: #0f766e;
 }
 
+.participant-link {
+  border: 0;
+  background: transparent;
+  color: #0f766e;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 900;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.participant-link:hover {
+  color: #0f172a;
+}
+
 .two-columns {
   display: grid;
   grid-template-columns: 1fr 1.15fr;
@@ -467,6 +487,96 @@ tbody tr:hover {
   transform: translateY(0);
 }
 
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.modal[hidden] {
+  display: none;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.58);
+  backdrop-filter: blur(4px);
+}
+
+.modal-dialog {
+  position: relative;
+  width: min(920px, 100%);
+  max-height: min(760px, calc(100vh - 40px));
+  overflow: auto;
+  background: #ffffff;
+  border-radius: 28px;
+  padding: 28px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.3);
+}
+
+.modal-close {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #0f172a;
+  cursor: pointer;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.modal-dialog h2 {
+  margin: 4px 0 20px;
+  font-size: 30px;
+  font-weight: 900;
+}
+
+.participant-bets-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.bet-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  padding: 18px;
+  background: #f8fafc;
+}
+
+.bet-card h3 {
+  margin: 0 0 14px;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.bet-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding-top: 10px;
+  margin-top: 10px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.bet-row span {
+  color: #667085;
+  font-weight: 700;
+}
+
+.bet-row strong {
+  color: #0f172a;
+  text-align: left;
+}
+
 @media (max-width: 900px) {
   .hero {
     padding: 20px 18px 54px;
@@ -504,6 +614,10 @@ tbody tr:hover {
 
   table {
     min-width: 720px;
+  }
+
+  .participant-bets-grid {
+    grid-template-columns: 1fr;
   }
 }
 
