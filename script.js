@@ -1,5 +1,5 @@
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx4zlW2GzCFjw-yQ4MFWgImcNSQvScmqD0hFWtZaSYKk-eVD1ZoTmfjyToJSU1VTXVEiw/exec";
-
+const BETS_SCRIPT_URL = "";
 let dashboardData = {
     standings: [],
     games: [],
@@ -277,7 +277,7 @@ async function openParticipantModal(participantName) {
 
     try {
         const url =
-            `${APPS_SCRIPT_URL}?action=playerBets&player=${encodeURIComponent(participantName)}`;
+            `${BETS_SCRIPT_URL}?action=playerBets&player=${encodeURIComponent(participantName)}`;
 
         const data = await jsonpRequest(url);
 
