@@ -1,5 +1,5 @@
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx4zlW2GzCFjw-yQ4MFWgImcNSQvScmqD0hFWtZaSYKk-eVD1ZoTmfjyToJSU1VTXVEiw/exec";
-const BETS_SCRIPT_URL = "";
+const BETS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwHDwYUxykIvcrCW_gNjlBdnR7OmJxmcTOfS5-iU8qD/dev";
 let dashboardData = {
     standings: [],
     games: [],
